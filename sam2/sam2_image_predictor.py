@@ -154,7 +154,7 @@ class SAM2ImagePredictor:
             img_batch = self._transforms.forward_batch(images)
         else:
             [self._orig_hw.append(images[i,...].shape[:2]) for i in range(images.shape[0])]
-            images = [self._transforms.transforms(((images[i,...]-images[i,...].min())/images[i,...].max()).permute(2,0,1).float()) for i in range(images.shape[0])]
+            images = [self._transforms.transforms(((images[i,...]-images[i,...].min()).div(255)).permute(2,0,1).float().contiguous()) for i in range(images.shape[0])]
             img_batch = torch.stack(images, dim=0)
             
  
