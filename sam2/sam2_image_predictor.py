@@ -131,26 +131,33 @@ class SAM2ImagePredictor:
     @torch.no_grad()
     def set_image_batch(
         self,
-        image_list: List[Union[np.ndarray]],
+        images: Union[torch.Tensor,List[Union[np.ndarray]]],
     ) -> None:
         """
         Calculates the image embeddings for the provided image batch, allowing
         masks to be predicted with the 'predict_batch' method.
 
         Arguments:
-          image_list (List[np.ndarray]): The input images to embed in RGB format. The image should be in HWC format if np.ndarray
+          images (List[np.ndarray]): The input images to embed in RGB format. The image should be in HWC format if np.ndarray
           with pixel values in [0, 255].
         """
         self.reset_predictor()
-        assert isinstance(image_list, list)
+        assert isinstance(images, list) or isinstance(images, torch.Tensor)
         self._orig_hw = []
-        for image in image_list:
-            assert isinstance(
-                image, np.ndarray
-            ), "Images are expected to be an np.ndarray in RGB format, and of shape  HWC"
-            self._orig_hw.append(image.shape[:2])
-        # Transform the image to the form expected by the model
-        img_batch = self._transforms.forward_batch(image_list)
+        if isinstance(images,list):
+            for image in images:
+                assert isinstance(
+                    image, np.ndarray
+                ), "Images are expected to be an np.ndarray in RGB format, and of shape  HWC"
+                self._orig_hw.append(image.shape[:2])
+            # Transform the image to the form expected by the model
+            img_batch = self._transforms.forward_batch(images)
+        else:
+            [self._orig_hw.append(images[i,...].shape[:2]) for i in range(images.shape[0])]
+            images = [self._transforms.transforms(((images[i,...]-images[i,...].min())/images[i,...].max()).permute(2,0,1).float()) for i in range(images.shape[0])]
+            img_batch = torch.stack(images, dim=0)
+            
+ 
         img_batch = img_batch.to(self.device)
         batch_size = img_batch.shape[0]
         assert (
